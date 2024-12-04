@@ -5,7 +5,8 @@ SRCS   := thread_create.c \
 	thread_create_simple_args.c \
 	thread_create_with_return_args.c \
 	t0_create.c \
-	p1_share_data.c
+	p1_share_data.c  \
+	lock1.c
 
 # 设置输出目录
 OUT_DIR := build

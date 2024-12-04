@@ -895,7 +895,7 @@ class process:
 #
 # main program
 #
-parser = OptionParser()
+parser = OptionParser()             # 允许你从命令行读取参数和选项，并根据指定的格式自动生成帮助信息。
 parser.add_option('-s', '--seed',      default=0,          help='the random seed',                  action='store',      type='int',    dest='seed')
 parser.add_option('-t', '--threads',   default=2,          help='number of threads',                action='store',      type='int',    dest='numthreads')
 parser.add_option('-p', '--program',   default='',         help='source program (in .s)',           action='store',      type='string', dest='progfile')

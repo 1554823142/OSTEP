@@ -229,3 +229,125 @@ prompt> ./x86.py -p looping-race-nolock.s -t 2 -a bx=1 -M 2000 -i 2
 通过这些选项，你可以创建非常复杂的多线程程序并探索并发中的问题，如竞态条件、死锁等。
 
 希望这些示例能帮助你更好地理解并发编程的基本概念以及如何利用模拟器模拟多线程行为。
+
+### homework
+
+- [looping-race-nolock.s](looping-race-nolock.s)</br>
+   ```bash
+         liubin@Y9000P:~/Downloads/ostep-code-master/homework/ostep-homework-master/threads-intro$ ./x86.py -p looping-race-nolock.s -t 2 -i 2 -M 2000 -R ax,bx -c
+   
+
+   2000      ax    bx          Thread 0                Thread 1         
+      0       0     0   
+      0       0     0   1000 mov 2000, %ax
+      0       1     0   1001 add $1, %ax
+      0       0     0   ------ Interrupt ------  ------ Interrupt ------  
+      0       0     0                            1000 mov 2000, %ax
+      0       1     0                            1001 add $1, %ax
+      0       1     0   ------ Interrupt ------  ------ Interrupt ------  
+      1       1     0   1002 mov %ax, 2000
+      1       1    -1   1003 sub  $1, %bx
+      1       1     0   ------ Interrupt ------  ------ Interrupt ------  
+      1       1     0                            1002 mov %ax, 2000
+      1       1    -1                            1003 sub  $1, %bx
+      1       1    -1   ------ Interrupt ------  ------ Interrupt ------  
+      1       1    -1   1004 test $0, %bx
+      1       1    -1   1005 jgt .top
+      1       1    -1   ------ Interrupt ------  ------ Interrupt ------  
+      1       1    -1                            1004 test $0, %bx
+      1       1    -1                            1005 jgt .top
+      1       1    -1   ------ Interrupt ------  ------ Interrupt ------  
+      1       1    -1   1006 halt
+      1       1    -1   ----- Halt;Switch -----  ----- Halt;Switch -----  
+      1       1    -1                            1006 halt
+   liubin@Y9000P:~/Downloads/ostep-code-master/homework/ostep-homework-master/threads-intro$ ./x86.py -p looping-race-nolock.s -t 2 -i 50 -M 2000 -R ax,bx -c
+   
+
+   2000      ax    bx          Thread 0                Thread 1         
+      0       0     0   
+      0       0     0   1000 mov 2000, %ax
+      0       1     0   1001 add $1, %ax
+      1       1     0   1002 mov %ax, 2000
+      1       1    -1   1003 sub  $1, %bx
+      1       1    -1   1004 test $0, %bx
+      1       1    -1   1005 jgt .top
+      1       1    -1   1006 halt
+      1       0     0   ----- Halt;Switch -----  ----- Halt;Switch -----  
+      1       1     0                            1000 mov 2000, %ax
+      1       2     0                            1001 add $1, %ax
+      2       2     0                            1002 mov %ax, 2000
+      2       2    -1                            1003 sub  $1, %bx
+      2       2    -1                            1004 test $0, %bx
+      2       2    -1                            1005 jgt .top
+      2       2    -1                            1006 halt
+
+         liubin@Y9000P:~/Downloads/ostep-code-master/homework/ostep-homework-master/threads-intro$ ./x86.py -p looping-race-nolock.s -t 2 -i 3 -a bx=3 -M 2000 -R ax,bx -c
+   
+
+   2000      ax    bx          Thread 0                Thread 1         
+      0       0     3   
+      0       0     3   1000 mov 2000, %ax
+      0       1     3   1001 add $1, %ax
+      1       1     3   1002 mov %ax, 2000
+      1       0     3   ------ Interrupt ------  ------ Interrupt ------  
+      1       1     3                            1000 mov 2000, %ax
+      1       2     3                            1001 add $1, %ax
+      2       2     3                            1002 mov %ax, 2000
+      2       1     3   ------ Interrupt ------  ------ Interrupt ------  
+      2       1     2   1003 sub  $1, %bx
+      2       1     2   1004 test $0, %bx
+      2       1     2   1005 jgt .top
+      2       2     3   ------ Interrupt ------  ------ Interrupt ------  
+      2       2     2                            1003 sub  $1, %bx
+      2       2     2                            1004 test $0, %bx
+      2       2     2                            1005 jgt .top
+      2       1     2   ------ Interrupt ------  ------ Interrupt ------  
+      2       2     2   1000 mov 2000, %ax
+      2       3     2   1001 add $1, %ax
+      3       3     2   1002 mov %ax, 2000
+      3       2     2   ------ Interrupt ------  ------ Interrupt ------  
+      3       3     2                            1000 mov 2000, %ax
+      3       4     2                            1001 add $1, %ax
+      4       4     2                            1002 mov %ax, 2000
+      4       3     2   ------ Interrupt ------  ------ Interrupt ------  
+      4       3     1   1003 sub  $1, %bx
+      4       3     1   1004 test $0, %bx
+      4       3     1   1005 jgt .top
+      4       4     2   ------ Interrupt ------  ------ Interrupt ------  
+      4       4     1                            1003 sub  $1, %bx
+      4       4     1                            1004 test $0, %bx
+      4       4     1                            1005 jgt .top
+      4       3     1   ------ Interrupt ------  ------ Interrupt ------  
+      4       4     1   1000 mov 2000, %ax
+      4       5     1   1001 add $1, %ax
+      5       5     1   1002 mov %ax, 2000
+      5       4     1   ------ Interrupt ------  ------ Interrupt ------  
+      5       5     1                            1000 mov 2000, %ax
+      5       6     1                            1001 add $1, %ax
+      6       6     1                            1002 mov %ax, 2000
+      6       5     1   ------ Interrupt ------  ------ Interrupt ------  
+      6       5     0   1003 sub  $1, %bx
+      6       5     0   1004 test $0, %bx
+      6       5     0   1005 jgt .top
+      6       6     1   ------ Interrupt ------  ------ Interrupt ------  
+      6       6     0                            1003 sub  $1, %bx
+      6       6     0                            1004 test $0, %bx
+      6       6     0                            1005 jgt .top
+      6       5     0   ------ Interrupt ------  ------ Interrupt ------  
+      6       5     0   1006 halt
+      6       6     0   ----- Halt;Switch -----  ----- Halt;Switch -----  
+      6       6     0                            1006 halt
+
+
+   ```
+   可以发现如果设置的中断频率较小，每个线程各执行一次+1， 结果就不是2，原因：突然的打断使得虽然增加了1，但是这条语句`mov %ax, 2000`没有执行，即ax2000中的值没有更新
+
+   但是如果设置固定的间隔为3，则不会发生这个竞争问题，原因：因为增加并存回2000是在一起进行的，没有被中断，所以就不会发生竞争（`但是把间断设置成4也是不行`,设置成5也是可以的）
+
+   如果设置bx=100,则间隔最少设置成508可以，如果小于这个值，就会产生竞争
+
+- [wait-for-me.s](wait-for-me.s)</br>
+
+   如果设置两个线程的ax不同，则t0的ax=0，t1的ax=1时,另一个测试设置的值正好相反，则如果设置中断间隔的值越大，则两者的速率差别越大（其中如果t0的ax=0，t1的ax=1时则速率慢），但如果中断间隔值较小，则两者的差别不大
+
+   - 原因： 如果线程刚开始时如果不为1，则会跳转到waiter，如果另一个线程不启动（因为两个线程被预先设置的初始值不等），则会永远等待，直到新的线程将值设置为可以跳转到signaller
