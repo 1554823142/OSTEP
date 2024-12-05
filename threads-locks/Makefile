@@ -1,13 +1,8 @@
 CC     := gcc
 CFLAGS := -Wall -Werror -I../include 
 
-SRCS   := thread_create.c \
-	thread_create_simple_args.c \
-	thread_create_with_return_args.c \
-	t0_create.c \
-	p1_share_data.c  \
-	lock1.c	\
-	cv1.c
+SRCS   := compare-and-swap.c \
+		  test-and-set.c
 
 # 设置输出目录
 OUT_DIR := build
