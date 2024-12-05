@@ -2,7 +2,11 @@ CC     := gcc
 CFLAGS := -Wall -Werror -I../include 
 
 SRCS   := compare-and-swap.c \
-		  test-and-set.c
+		  test-and-set.c	\
+		  LL_SC.c	\
+		  fetch-and-add.c \
+		  test-and-set2.c	\
+		  queue_sleep.c
 
 # 设置输出目录
 OUT_DIR := build

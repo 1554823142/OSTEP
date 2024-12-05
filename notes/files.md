@@ -112,3 +112,30 @@
         - `"m" (*ptr)`：`*ptr` 也会放到内存中供操作使用。
         - `"a" (old)`：`old` 的值会被加载到 `eax` 寄存器中（这是 `cmpxchgl` 指令的要求）。     
 
+- [链接的加载和条件存储指令实现锁](../threads-locks/LL_SC.c)
+
+    - `store-conditonal指令`</br>
+        只有上一次的加载的地址在期间没有更新时才会成功
+- [28.11 获取并增加](../threads-locks/fetch-and-add.c)
+    当线程的`myturn == turn`时，就会轮到该线程进入临界区
+    - 数据结构：
+    ```c
+        typedef struct
+    {
+        int ticket; //表示正在排队的票据编号。每个线程会获取一个票据编号，线程按票据编号的顺序获取锁。
+        int turn;   //表示当前轮次，指示哪个线程能够获取锁。
+    }lock_t;
+    ```
+    - 实现原理
+
+        - 第一个线程调用 FetchAndAdd(&lock->ticket)，得到票号 0。然后它进入自旋等待，直到 turn == 0，才会进入临界区执行任务。
+        - 第二个线程调用 FetchAndAdd(&lock->ticket)，得到票号 1。它在 turn == 1 时才会获得锁。
+        - 其他线程依此类推，都会等待 turn 与它们的票号一致时，才能获取锁。
+        - `注意`： 线程之间是共享堆空间的！！！！！！！！！！！！！
+    - 优点</br>
+    本方法可以保证所有的线程均会得到锁，只要一个线程获得了ticket,就最终会被调度
+- [28.13 让出来！](../threads-locks/test-and-set2.c)
+    将自旋（即while中无内容）用yield（）代替，这时就不会出现原来版本的卡死问题
+
+- [28.14 使用队列： 休眠替代自旋](../threads-locks/queue_sleep.c)
+

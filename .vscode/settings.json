@@ -3,6 +3,7 @@
         "common.h": "c",
         "pthread.h": "c",
         "common_threads.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "stdbool.h": "c"
     }
 }
