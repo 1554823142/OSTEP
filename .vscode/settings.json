@@ -4,6 +4,10 @@
         "pthread.h": "c",
         "common_threads.h": "c",
         "unistd.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "futex.h": "c",
+        "syscall.h": "c",
+        "test.C": "cpp",
+        "queue.h": "c"
     }
 }

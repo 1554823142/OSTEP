@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include<pthread.h>
 
 // 定义队列元素的结构体
 typedef struct Node {
-    int data;              // 存储队列中的数据
+    pthread_t pid;              // 存储队列中的数据
     struct Node* next;     // 指向下一个节点的指针
 } Node;
 
@@ -31,7 +32,7 @@ void queue_add(queue_t* q, int id) {
         printf("Memory allocation failed\n");
         return;
     }
-    newNode->data = id;
+    newNode->pid = id;
     newNode->next = NULL;
 
     if (q->rear == NULL) {
@@ -53,7 +54,7 @@ int queue_remove(queue_t* q) {
 
     // 从队列头部删除元素
     Node* temp = q->front;
-    int data = temp->data;
+    int pid = temp->pid;
     
     q->front = q->front->next;
 
@@ -63,5 +64,5 @@ int queue_remove(queue_t* q) {
     }
 
     free(temp);  // 释放删除的节点内存
-    return data;
+    return pid;
 }
