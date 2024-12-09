@@ -6,7 +6,8 @@ SRCS   := compare-and-swap.c \
 		  LL_SC.c	\
 		  fetch-and-add.c \
 		  test-and-set2.c	\
-		  queue_sleep.c
+		  queue_sleep.c \
+		  bounded_buffer.c
 
 # 设置输出目录
 OUT_DIR := build
