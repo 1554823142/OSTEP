@@ -1,14 +1,14 @@
+# thread
 
-# new knowledge
+## new knowledge
 
-## volatile 
+### volatile 
 
 告诉编译器某个变量的值可能会在程序执行过程中发生变化，而不通过当前程序的控制流（例如，可能由硬件或其他线程修改）。
 
 通过使用 volatile，编译器会**避免对该变量进行优化**，从而确保程序每次访问该变量时`都会从内存中重新读取它`，而不是使用缓存或寄存器中的值。
 
-
-## 反汇编程序（objdump(linux)）
+### 反汇编程序（objdump(linux)）
 
 ```bash
 objdump -d obj           # 其中obj为可执行文件
@@ -35,5 +35,4 @@ objdump -d obj           # 其中obj为可执行文件
 - `.text` 部分：
 `.text` 部分是实际的程序代码所在部分。这段代码包含程序的执行逻辑，比如 `main` 函数、线程创建和加入等。
 
-
-# 
+##  
