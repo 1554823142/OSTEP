@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 from __future__ import print_function
 import sys
@@ -87,10 +87,10 @@ parser.add_option('-c', help='compute answers for me', action='store_true',
 
 random.seed(options.seed)
 
-# MLFQ: How Many Queues
+# MLFQ: How Many Queues             列队数量
 numQueues = options.numQueues
 
-quantum = {}
+quantum = {}                       # 每个列队时间片长度
 if options.quantumList != '':
     # instead, extract number of queues and their time slic
     quantumLengths = options.quantumList.split(',')
@@ -104,7 +104,7 @@ else:
         quantum[i] = int(options.quantum)
 
 allotment = {}
-if options.allotmentList != '':
+if options.allotmentList != '':    # 每个列队的时间分配列表
     allotmentLengths = options.allotmentList.split(',')
     if numQueues != len(allotmentLengths):
         print('number of allotments specified must match number of quantums')
@@ -120,7 +120,7 @@ else:
     for i in range(numQueues):
         allotment[i] = int(options.allotment)
 
-hiQueue = numQueues - 1
+hiQueue = numQueues - 1         # 最高优先级队列号
 
 # MLFQ: I/O Model
 # the time for each IO: not great to have a single fixed time but...
@@ -135,7 +135,7 @@ job = {}
 # seed the random generator
 random_seed(options.seed)
 
-# jlist 'startTime,runTime,ioFreq:startTime,runTime,ioFreq:...'
+# jlist 'startTime,runTime,ioFreq:startTime,runTime,ioFreq:...'  作业列表
 jobCnt = 0
 if options.jlist != '':
     allJobs = options.jlist.split(':')
@@ -179,7 +179,7 @@ numJobs = len(job)
 print('Here is the list of inputs:')
 print('OPTIONS jobs',            numJobs)
 print('OPTIONS queues',          numQueues)
-for i in range(len(quantum)-1,-1,-1):
+for i in range(len(quantum)-1,-1,-1):               # allotment: 列队时间分配 quantum: 列队的时间片长度
     print('OPTIONS allotments for queue %2d is %3d' % (i, allotment[i]))
     print('OPTIONS quantum length for queue %2d is %3d' % (i, quantum[i]))
 print('OPTIONS boost',           options.boost)
@@ -227,7 +227,7 @@ while finishedJobs < totalJobs:
     # (a) the job uses up its time quantum
     # (b) the job performs an I/O
 
-    # check for priority boost
+    # check for priority boost 如果有boost(优先级提升), 则将所有的作业移动到最高优先队列
     if options.boost > 0 and currTime != 0:
         if currTime % options.boost == 0:
             print('[ time %d ] BOOST ( every %d )' % (currTime, options.boost))
@@ -236,7 +236,7 @@ while finishedJobs < totalJobs:
                 for j in queue[q]:
                     if job[j]['doingIO'] == False:
                         queue[hiQueue].append(j)
-                queue[q] = []
+                queue[q] = []       # 移动完低等级后清除所有
 
             # change priority to high priority
             # reset number of ticks left for all jobs (just for lower jobs?)
@@ -270,7 +270,7 @@ while finishedJobs < totalJobs:
         continue
             
     # there was at least one runnable job, and hence ...
-    currJob = queue[currQueue][0]
+    currJob = queue[currQueue][0]           # 找到当前最高优先级的作业并运行
     if job[currJob]['currPri'] != currQueue:
         Abort('currPri[%d] does not match currQueue[%d]' % (job[currJob]['currPri'], currQueue))
 
@@ -307,13 +307,13 @@ while finishedJobs < totalJobs:
         assert(done == currJob)
         continue
 
-    # CHECK FOR IO
+    # CHECK FOR IO          如果发出I/O请求
     issuedIO = False
     if ioFreq > 0 and (((runTime - timeLeft) % ioFreq) == 0):
         # time for an IO!
         print('[ time %d ] IO_START by JOB %d' % (currTime, currJob))
         issuedIO = True
-        desched = queue[currQueue].pop(0)
+        desched = queue[currQueue].pop(0)       # 移出队列
         assert(desched == currJob)
         job[currJob]['doingIO'] = True
         # this does the bad rule -- reset your time at this level if you do I/O
@@ -321,24 +321,24 @@ while finishedJobs < totalJobs:
             job[currJob]['ticksLeft'] = quantum[currQueue]
             job[currJob]['allotLeft'] = allotment[currQueue]
         # add to IO Queue: but which queue?
-        futureTime = currTime + ioTime
+        futureTime = currTime + ioTime          # 为作业安排I/O所用的时间
         if futureTime not in ioDone:
             ioDone[futureTime] = []
         print('IO DONE')
         ioDone[futureTime].append((currJob, 'IO_DONE'))
         
     # CHECK FOR QUANTUM ENDING AT THIS LEVEL (BUT REMEMBER, THERE STILL MAY BE ALLOTMENT LEFT)
-    if ticksLeft == 0:
-        if issuedIO == False:
+    if ticksLeft == 0:          # 如果作业的时间片(quantum)用完, 根据时间分配决定其优先级高低
+        if issuedIO == False:   # 未发出I/O请求: 直接移出队列, 等待I/O完成后重新调度
             # IO HAS NOT BEEN ISSUED (therefor pop from queue)'
             desched = queue[currQueue].pop(0)
-        assert(desched == currJob)
+        assert(desched == currJob)  # 确保从队列中移除的作业确实是当前正在运行的作业
 
-        job[currJob]['allotLeft'] = job[currJob]['allotLeft'] - 1
+        job[currJob]['allotLeft'] = job[currJob]['allotLeft'] - 1       # 每用完一个时间片就将分配额减一
 
-        if job[currJob]['allotLeft'] == 0:
+        if job[currJob]['allotLeft'] == 0:      # 分配额用完了
             # this job is DONE at this level, so move on
-            if currQueue > 0:
+            if currQueue > 0:   # 降低优先级
                 # in this case, have to change the priority of the job
                 job[currJob]['currPri']   = currQueue - 1
                 job[currJob]['ticksLeft'] = quantum[currQueue-1]
