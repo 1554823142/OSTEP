@@ -65,6 +65,12 @@ ubuntu使用`man man`指令就可以查看, 网络上也有
 
 ## 受限直接执行(limited direct execution	LDE)
 
+###  概念
+
+让程序运行的大部分指令直接访问硬件, 只有在一些关键点(如进程发起系统调用时引起的时钟中断)由OS介入来确保在**正确的时间, 正确的地点做正确的事**
+
+为了实现高效的虚拟化, OS应该尽量让程序自己运行, 同时通过在关键点的及时介入, 来确保对硬件的控制
+
 #### 关键问题1: 如何执行受限的操作 ----- 使用受保护的控制权转移
 
 硬件通过提供不同的执行模式来协助操作系统:
@@ -464,11 +470,161 @@ int main()
 ==14909== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
 ```
 
-
-
-
-
 #### 注意
 
 程序中打印的地址均为虚拟地址, 只有OS(和硬件)才知道物理地址
 
+## 地址转换
+
+硬件将指令中的虚拟地址转化为数据实际存储的物理地址, 同时OS也应该设置好硬件, 同时**管理内存**, 记录被占用和空闲的内存位置.
+
+### 动态(基于硬件)重定位
+
+即机制加界限(base and bound)机制, 每个CPU需要base和bound寄存器, 这可以使我们将地址空间放在物理地址的任何位置, 同时确保进程只能访问自己的地址空间, 即:
+
+```javascript
+physical address = virtual address + base
+```
+
+其中地址寄存器用来转换为物理地址, 界限寄存器用来保证地址在进程地址的空间范围
+
+其中[作业](../homework/ostep-homework-master/vm-mechanism/relocation.py)中的运行结果如下:
+
+```bash
+ARG seed 0
+ARG address space size 1k
+ARG phys mem size 16k
+
+Base-and-Bounds register information:
+
+  Base   : 0x00003082 (decimal 12418)
+  Limit  : 472
+
+Virtual Address Trace
+  VA  0: 0x000001ae (decimal:  430) --> VALID: 0x00003230 (decimal: 12848)
+  VA  1: 0x00000109 (decimal:  265) --> VALID: 0x0000318b (decimal: 12683)
+  VA  2: 0x0000020b (decimal:  523) --> SEGMENTATION VIOLATION
+  VA  3: 0x0000019e (decimal:  414) --> VALID: 0x00003220 (decimal: 12832)
+  VA  4: 0x00000322 (decimal:  802) --> SEGMENTATION VIOLATION
+```
+
+
+
+CPU负责地址转换的部分称为**内存管理单元(MMU)**
+
+#### 软件重定位
+
+也称为静态重定位, 名为加载程序的软件接手将要运行的可执行程序, 但是问题是不提供访问保护, 这时就需要硬件支持
+
+### 分段
+
+给地址空间内的每个逻辑段(segment, 典型的地址空间中三个不同的逻辑段: 代码, 栈和堆)一对基址和界限寄存器对, 分段的机制可以OS能够将不同的短放到不同的物理内存区域, 从而避免了虚拟地址空间中未使用部分占用物理内存
+
+#### 段错误(segment fault)
+
+**试图访问非法的地址**, 如地址越界, 就会陷入OS, 终止出错进程
+
+eg:
+
+```c
+#include <stdio.h>
+
+int main() {
+    int *ptr = NULL; // 指针指向NULL
+    *ptr = 10;       // 尝试对NULL指针解引用
+    return 0;
+}
+```
+
+输出表明:
+
+```bash
+段错误 (核心已转储)
+```
+
+其他的情况还有:
+
+1. **访问空指针**：尝试对空指针解引用。
+2. **数组越界**：访问数组的越界元素。
+3. **野指针**：访问已释放的内存或未初始化的指针。
+4. **递归调用过深**：栈空间耗尽。
+5. **非法内存访问**：尝试访问非法的内存区域。
+
+### 栈的反向增长
+
+与堆和代码段不同, 栈通常是**从高地址向低地址增长**, 为了提高内存管理的效率
+
+### 代码实现
+
+[示例代码](../homework/ostep-homework-master/vm-segmentation/segmentation.py)
+
+核心实现代码:
+
+```c
+paddr = 0
+        if (vaddr >= (asize / 2)):
+            # seg 1
+            #  [base1+len1]  [negative offset]
+            paddr = nbase1 + (vaddr - asize)
+            if paddr < base1:
+                print('  VA %2d: 0x%08x (decimal: %4d) --> SEGMENTATION VIOLATION (SEG1)' % (i, vaddr, vaddr))
+            else:
+                print('  VA %2d: 0x%08x (decimal: %4d) --> VALID in SEG1: 0x%08x (decimal: %4d)' % (i, vaddr, vaddr, paddr, paddr))
+        else:
+            # seg 0
+            if (vaddr >= len0):
+                print('  VA %2d: 0x%08x (decimal: %4d) --> SEGMENTATION VIOLATION (SEG0)' % (i, vaddr, vaddr))
+            else:
+                paddr = vaddr + base0
+                print('  VA %2d: 0x%08x (decimal: %4d) --> VALID in SEG0: 0x%08x (decimal: %4d)' % (i, vaddr, vaddr, paddr, paddr))
+```
+
+
+
+输出如下:
+
+```bash
+ARG seed 0
+ARG address space size 1k
+ARG phys mem size 16k
+
+Segment register information:
+
+  Segment 0 base  (grows positive) : 0x00001aea (decimal 6890)
+  Segment 0 limit                  : 472
+
+  Segment 1 base  (grows negative) : 0x00001254 (decimal 4692)
+  Segment 1 limit                  : 450
+
+Virtual Address Trace
+  VA  0: 0x0000020b (decimal:  523) --> SEGMENTATION VIOLATION (SEG1)
+  VA  1: 0x0000019e (decimal:  414) --> VALID in SEG0: 0x00001c88 (decimal: 7304)
+  VA  2: 0x00000322 (decimal:  802) --> VALID in SEG1: 0x00001176 (decimal: 4470)
+  VA  3: 0x00000136 (decimal:  310) --> VALID in SEG0: 0x00001c20 (decimal: 7200)
+  VA  4: 0x000001e8 (decimal:  488) --> SEGMENTATION VIOLATION (SEG0)
+```
+
+- 由于段0和段1是靠最高位区分, 如VA 0, 最高位为1, 则为SEG14
+
+- 关于段1的有效地址范围:
+
+  - **起始地址**：`0x00001254 - 450 = 0x00001004`（十进制 4084）
+  - **结束地址**：`0x00001254`（十进制 4692）
+
+- 关于VA 1的不合法:
+
+  ```
+  物理地址 = 基址 - (段1限制 - 虚拟地址)
+  		= 0x00001254 - (450 - 523) = 0x000012A3
+  ```
+
+  
+
+- 关于VA 2的合法问题: 
+
+  ```javascript
+  物理地址 = 基址 - (段1限制 - 虚拟地址)
+  	    = 0x00001254 - (450 - 802) = 0x00001176
+  ```
+
+  
