@@ -627,4 +627,183 @@ Virtual Address Trace
   	    = 0x00001254 - (450 - 802) = 0x00001176
   ```
 
+
+
+
+## 空闲空间管理
+
+free-space management, 管理的空闲空间由于用户级的内存分配库, OS的分段实现虚拟内存等情况出现**外部碎片问题**而导致内存管理困难
+
+- 空闲列表: 堆上管理空闲空间的数据结构, 该结构包含管理内存区域的所有空闲块的引用
+
+- 内部碎片:
+
+  分配给进程的内存块中未使用的部分(因为浪费发生在已分配单元的**内部**), 常用于分配的内存大于实际的需求
+
+- 外部碎片:
+
+  内存中分散的小块空闲内存, 由于不连续无法分配给大块请求
+
+
+
+### 底层机制
+
+#### 追踪已分配空间
+
+`malloc`为了高效管理分配的内存块以及便于释放内存块, 会在分配的内存块前添加一个**头块**, 用于存储内存块的元数据, 即:调用`malloc(size)`时会分配大于`size`大小的块
+
+当调用`free(ptr)`时会发生:
+
+```c
+void free(void* ptr){
+    header_t* hptr = (void*)ptr - sizeof(header_t);
+}
+```
+
+
+
+#### 嵌入空闲列表
+
+模拟空闲列表:
+
+```c
+// 定义空闲列表
+typedef struct node_t{
+	int size;
+	struct node_t* next;
+}node_t;
+
+int main() {
+    // 现在模拟管理大小为4KB的内存块
+    
+    // 分配大小为4096字节的内存
+    node_t* head = mmap(NULL, 4096, PROT_READ |PROT_WRITE, 
+		    	MAP_ANON | MAP_PRIVATE, -1, 0);
+    // 初始化空闲列表
+    head->size = 4096 - sizeof(node_t);	// 需要减去头块大小
+    head->next = NULL;
+}
+```
+
+如果分配了三个大小为100字节的空间, 则效果图为:
+
+<img src="assets/image-20250214194142252.png" alt="image-20250214194142252" style="zoom: 67%;" />
+
+现在如果要释放第二个内存块, 则为:
+
+<img src="assets/image-20250214194239736.png" alt="image-20250214194239736" style="zoom:67%;" />
+
+即第二个块为空闲块, 更新空闲列表的头结点`head`为free掉的空间的头指针, 并更新`next`值指向接下来的空闲列表, 故现在的空闲空间为两部分
+
+解决现在空闲空间的零散现状------**合并列表项**(coalesce): 遍历列表, 合并相邻块
+
+### 基本策略
+
+- 最优匹配:
+
+  遍历整个空闲列表, 选择最接近用户请求大小的块, 但是查询代价高
+
+- 首次匹配:
+
+  找到一个足够大的块, 剩余的部分留给后续请求, 速度快, 分配程序管理空闲列表顺序十分重要, 采用**基于地址排序**, 通过保持空闲块按照内存地址有序使得合并容易
+
+- 下次匹配:
+
+  保存指向上一次查找结束的位置
+
+#### 其他算法
+
+- 分离空闲列表:
+
+  如果某个应用程序**经常申请**某种大小的内存空间, 使用一个**独立的列表**只管理这样大小的对象, 可以避免碎片化, 且内存分配与释放的速度很快
+
+  在内核启动时, 为可能频繁请求的内核对象创建一些**对象缓存**, 如果某个缓存中的空间即将耗尽, 则向通用内存分配程序申请一些内存厚块(slab, 其大小为页大小和对象大小的公倍数); 如果给定厚块的对象的引用为0, 则内存分配程序回收这些空间
+
+- 伙伴系统:
+
+  二分伙伴分配程序(binary bubby allocator), 空闲空间首先被概念上分配$$2^N$$的大空间, 当有请求时则递归的二分, 直到满足需求的大小, 然后返回用户
+
+  但是由于只分配二的次幂大小, 会有**内部碎片**的问题
+
+  关键之处就在于块被释放时**会递归的合并**, 直到合并整个内存区域
+
+
+
+## 分页
+
+将进程的地址空间分割成**固定长度**的分片, 每个分割的单元称为一页; 相应的把物理内存看成定长slot的阵列叫做page frame. 分页可以增加系统的灵活性, 也能提供简单性
+
+为了记录地址空间每个虚拟页放在物理内存的位置, OS为每个进程保存**page table**, 主要作用是为地址空间的每个虚拟页保存**地址转换**
+
+### 页表
+
+- 位数:
+
+  如果一个32位的地址空间, 带有4KB的页, 则虚拟地址分为两部分:
+
+  - 20位VPN(虚拟页号)
+  - 12位的偏移量
+
+#### 线性页表
+
+本质为一个数组, OS通过VPN检索该数组, 并在该索引处查找页表项(PTE), 用来找到物理帧号(PFN), 其中一个X86页表项的结构如下:([图片参考](https://th0ar.gitbooks.io/xv6-chinese/content/index.html>))
+
+<img src="assets/f2-1.png" alt="f2-1" style="zoom:67%;" />
+
+- 计算过程:
+
+  ```c
+  VPN = (VirtualAddress & VPN_MASK) >> SHIFT;
+  // 计算page-table entry(PTE)
+  PTEAddr = PageTableBaseRegister + (VPN * sizeof(PTE));
   
+  // 寻址
+  PTE = AccessMemory(PTEAdrr);
+  // 检查地址的合法性
+  if(PTE.Valid == False)
+      RaiseExeption(SEGMENTATION_DEFAULT);
+  else if(CanAccess(PTE.ProtectBits) == False)
+      RaiseExeption(PROTECTION_DEFAULT);
+  else{
+      // 合法
+      offset = VirtualAddress & OFFSET_MASK;
+      PhysAddr = (PTE.PFN << PFN_SHIFT) | offset;
+      Register = AccessMemory(PhysAddr);		// 将值放进寄存器中
+  }
+  ```
+
+  - `VPN_MASK`: 如果一共6位, 其中VPN位为高2位, 则`VPN_MASK`为110000
+  - `SHIFT`: 例子为4位, 偏移量的位数
+  
+- 实现代码(课后作业样例代码)
+
+  - 计算虚拟地址:
+
+    ```python
+    # now, assign some pages of the VA
+    vabits   = int(math.log(float(asize))/math.log(2.0))        # 计算地址空间大小asize的位数(使用换底公式)
+    mustbepowerof2(vabits, asize, 'address space must be a power of 2')
+    pagebits = int(math.log(float(pagesize))/math.log(2.0))     # 页内偏移量
+    mustbepowerof2(pagebits, pagesize, 'page size must be a power of 2')
+    vpnbits  = vabits - pagebits                                # 计算页号位数
+    pagemask = (1 << pagebits) - 1                              # 生成页掩码
+    vpnmask = 0xFFFFFFFF & ~pagemask							# 生成高位的掩码(即VPN_MASK)
+    ```
+
+  - 计算物理地址:
+
+    ```python
+    vpn = (vaddr & vpnmask) >> pagebits		# 计算虚拟页号
+    
+    # 已经检验完有效性...
+    pfn = pt[vpn]							# 查看页表, 检查是否映射到某个物理帧
+    offset = vaddr & pagemask
+    paddr = (pfn << pagebits) | offset		# 计算最终的物理地址
+    ```
+  
+    
+  
+  
+  
+  
+

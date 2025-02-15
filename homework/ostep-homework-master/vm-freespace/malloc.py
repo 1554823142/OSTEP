@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 from __future__ import print_function
 import random
@@ -48,7 +48,7 @@ class malloc:
         # print('adding', addr, 'to map of size', size)
         
     def malloc(self, size):
-        if self.align != -1:
+        if self.align != -1:        # 启用对齐
             left = size % self.align
             if left != 0:
                 diff = self.align - left
@@ -67,7 +67,7 @@ class malloc:
 
         count = 0
             
-        for i in range(len(self.freelist)):
+        for i in range(len(self.freelist)):         # 遍历空闲列表
             eaddr, esize = self.freelist[i][0], self.freelist[i][1]
             count   += 1
             if esize >= size and ((self.policy == 'BEST'  and esize < bestSize) or
@@ -82,15 +82,15 @@ class malloc:
         if bestIdx != -1:
             if bestSize > size:
                 # print('SPLIT', bestAddr, size)
-                self.freelist[bestIdx] = (bestAddr + size, bestSize - size)
-                self.addToMap(bestAddr, size)
+                self.freelist[bestIdx] = (bestAddr + size, bestSize - size)     # 保存剩余的空闲块
+                self.addToMap(bestAddr, size)                                   # 用于释放时验证
             elif bestSize == size:
                 # print('PERFECT MATCH (no split)', bestAddr, size)
                 self.freelist.pop(bestIdx)
                 self.addToMap(bestAddr, size)
             else:
                 abort('should never get here')
-            return (bestAddr, count)
+            return (bestAddr, count)                                            # 返回分配块的起始地址和搜索的空闲块数量
 
         # print('*** FAILED TO FIND A SPOT', size)
         return (-1, count)

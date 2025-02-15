@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 from __future__ import print_function
 import sys
@@ -96,12 +96,12 @@ for i in range(0,pages):
 vpages = int(asize / pagesize)
 
 # now, assign some pages of the VA
-vabits   = int(math.log(float(asize))/math.log(2.0))
+vabits   = int(math.log(float(asize))/math.log(2.0))        # 计算地址空间大小asize的位数(使用换底公式)
 mustbepowerof2(vabits, asize, 'address space must be a power of 2')
-pagebits = int(math.log(float(pagesize))/math.log(2.0))
+pagebits = int(math.log(float(pagesize))/math.log(2.0))     # 页内偏移量
 mustbepowerof2(pagebits, pagesize, 'page size must be a power of 2')
-vpnbits  = vabits - pagebits
-pagemask = (1 << pagebits) - 1
+vpnbits  = vabits - pagebits                                # 计算页号位数
+pagemask = (1 << pagebits) - 1                              # 生成页掩码
 
 # import ctypes
 # vpnmask  = ctypes.c_uint32(~pagemask).value
@@ -124,7 +124,7 @@ print('Page Table (from entry 0 down to the max size)')
 for v in range(0,vpages):
     done = 0
     while done == 0:
-        if ((random.random() * 100.0) > (100.0 - float(options.used))):
+        if ((random.random() * 100.0) > (100.0 - float(options.used))):     # 进行有效性判定, options.used: percent of virtual address space that is used
             u = int(pages * random.random())
             if used[u] == 0:
                 used[u] = 1
@@ -134,16 +134,16 @@ for v in range(0,vpages):
                     print('  [%8d]  ' % v, end='')
                 else:
                     print('  ', end='')
-                print('0x%08x' % (0x80000000 | u))
+                print('0x%08x' % (0x80000000 | u))      # 生成有效页表项, 最高位置1, 其他位表示物理帧号
                 pt.insert(v,u)
-        else:
+        else:                                           # 无效: 
             # print('%8d - not valid' % v)
             if options.verbose == True:
                 print('  [%8d]  ' % v, end='')
             else:
                 print('  ', end='')
             print('0x%08x' % 0)
-            pt.insert(v,-1)
+            pt.insert(v,-1) 
             done = 1
 print(''            )
 
@@ -165,7 +165,7 @@ else:
 print('Virtual Address Trace')
 for vStr in addrList:
     # vaddr = int(asize * random.random())
-    vaddr = int(vStr)
+    vaddr = int(vStr)           # 虚拟地址
     if options.solve == False:
         print('  VA 0x%08x (decimal: %8d) --> PA or invalid address?' % (vaddr, vaddr))
     else:
